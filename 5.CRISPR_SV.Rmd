@@ -1,0 +1,113 @@
+---
+title: "5.CRISPR_SV"
+author:
+  - Peng Chen
+date: Wed Aug 16 00:51:27 2023
+bibliography: My_Library.bib
+link-citations: yes
+csl: ./my.csl
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+editor_options:
+  markdown:
+    wrap: 150
+---
+
+```{r setup, include = FALSE}
+path <- "/Users/asa/Documents/R/CRISPR_analysis"
+knitr::opts_chunk$set(eval=TRUE, #run code in chunks (default = TRUE)
+                       highlight = TRUE, #highlight display
+                       echo = TRUE, #whether to include the source code in the output
+                       tidy=TRUE, #whether to organize the code
+                       error = TRUE, #Whether to include error information in the output
+                       warning = FALSE, #Whether to include warnings in the output (default = TRUE)
+                       message = FALSE, #whether to include reference information in the output
+                       cache=TRUE, #whether to cache
+                       collapse = FALSE # output in one piece
+                       )
+knitr::opts_knit$set(root.dir = path)
+```
+Install and import all dependent packages, data import:
+```{r import,echo=TRUE, message=FALSE, warning=FALSE, results="hide"}
+source("./R_config.R")
+output="5.CRISPR_SV/"
+```
+
+# Crispr SV
+写了一些帮助定性和定量描述crispr array结构变化的方法，看看那些spacer很一致(cd-hit会去掉)的array具体情况。
+```{r}
+#test
+#./dir_61/GCF_900654245.1_MTB36.1_genomic.fna
+#./dir_3/GCF_900654265.1_MTB79499.1_genomic.fna
+
+#Mycobacterium tuberculosis
+load("1.pre_CCF/dir_3.rda")
+genome1=res$GCF_900654265.1_MTB79499.1_genomic.fna
+View(genome1$CRISPR)
+a1=get_Arrays(genome1)[["NZ_LR136962.1@CRISPR:8"]]
+
+load("1.pre_CCF/dir_61.rda")
+genome2=res$GCF_900654245.1_MTB36.1_genomic.fna
+View(genome2$CRISPR)
+a2=get_Arrays(genome2)[["NZ_LR136961.1@CRISPR:1"]]
+
+res=compare_array(a1$spacers,a2$spacers,identity = F)
+plot.array_comparison(res)
+align_array(res)->align_res
+plot.array_comparison(align_res)
+ggsave("5.CRISPR_SV/array_compare/1.Mycobacterium_tuberculosis2.pdf",width = 8)
+
+
+load("1.pre_CCF/dir_121.rda")
+genome1=res$GCF_002887255.1_ASM288725v1_genomic.fna
+View(genome1$CRISPR)
+a1=get_Arrays(genome1)[["NZ_CP025602.1@CRISPR:6"]]
+genome2=res$GCF_001387155.1_8987_5_20_genomic.fna
+View(genome2$CRISPR)
+a2=get_Arrays(genome2)[["NZ_CPIQ01000011.1@CRISPR:1"]]
+
+res=compare_array(a1$spacers,a2$spacers,identity = F)
+plot.array_comparison(res)
+align_array(res)->align_res
+plot.array_comparison(align_res)
+ggsave("5.CRISPR_SV/array_compare/1.Mycobacterium_tuberculosis3.pdf",width = 8)
+
+```
+
+
+```{r}
+genomelist=list()
+load("1.pre_CCF/dir_292.rda")
+genomelist[[1]]=res$GCF_000195955.2_ASM19595v2_genomic.fna
+load("1.pre_CCF/dir_106.rda")
+genomelist[[2]]=res$GCF_014899985.1_ASM1489998v1_genomic.fna
+
+View(genomelist[[1]]$CRISPR)
+a1=get_Arrays(genomelist[[1]])[["NC_000962.3@CRISPR:8"]]
+View(genomelist[[2]]$CRISPR)
+a2=get_Arrays(genomelist[[2]])[["NZ_CP041827.1@CRISPR:7"]]
+
+res=compare_array(a1$spacers,a2$spacers,identity = F)
+plot.array_comparison(res)
+align_array(res)->align_res
+plot.array_comparison(align_res,linewidth = 1)
+ggsave("5.CRISPR_SV/array_compare/1.Mycobacterium_tuberculosis.pdf",width = 10)
+
+View(genomelist[[1]]$CRISPR)
+a3=get_Arrays(genomelist[[1]])[["NC_000962.3@CRISPR:7"]]
+View(genomelist[[2]]$CRISPR)
+a4=get_Arrays(genomelist[[2]])[["NZ_CP041827.1@CRISPR:6"]]
+
+res=compare_array(a3$spacers,a4$spacers)
+plot.array_comparison(res)
+align_array(res)->align_res
+plot.array_comparison(align_res,linewidth = 1)
+ggsave("5.CRISPR_SV/array_compare/1.Mycobacterium_tuberculosis1.pdf",width = 10)
+
+plot_crispr(genomelist[[1]],contig ="NC_000962.3",cas = F)+xlim_crispr(3119185,3123576)
+summary_SV(align_res$array_align_res)
+```
+

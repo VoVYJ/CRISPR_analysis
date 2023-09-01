@@ -1,0 +1,292 @@
+---
+title: "1.pre_CCF"
+author:
+  - Peng Chen
+date: Tue Aug 15 23:48:10 2023
+bibliography: My_Library.bib
+link-citations: yes
+csl: ./my.csl
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+editor_options:
+  markdown:
+    wrap: 150
+---
+
+```{r setup, include = FALSE}
+path <- "/Users/asa/Documents/R/CRISPR_"
+knitr::opts_chunk$set(eval=FALSE, #run code in chunks (default = TRUE)
+                       highlight = TRUE, #highlight display
+                       echo = TRUE, #whether to include the source code in the output
+                       tidy=TRUE, #whether to organize the code
+                       error = TRUE, #Whether to include error information in the output
+                       warning = FALSE, #Whether to include warnings in the output (default = TRUE)
+                       message = FALSE, #whether to include reference information in the output
+                       cache=TRUE, #whether to cache
+                       collapse = FALSE # output in one piece
+                       )
+knitr::opts_knit$set(root.dir = path)
+```
+Install and import all dependent packages, data import:
+```{r import,echo=TRUE, message=FALSE, warning=FALSE, results="hide"}
+source("./R_config.R")
+output="1.pre_CCF/"
+```
+
+收集了很多genome，怎么，在哪搜集的？
+
+
+
+# Crisprcasfinder
+
+[CrisprCasFinder](https://crisprcas.i2bc.paris-saclay.fr/CrisprCasFinder/Index)
+
+wget -c https://crisprcas.i2bc.paris-saclay.fr/Home/DownloadFile?filename=CrisprCasFinder.simg
+这是一个容器
+
+crisprcasfinder这个软件 singularity exec -B /data/home/jianglab/share/last_bac_ccfinder/ CrisprCasFinder.simg 其中 -B 后面这个路径是一个执行路径，就是你的input, output 必须都在这个路径下面可以找到，不一定在下一级，可以在下下级等，只要是这个路径下的就可以。
+
+```{bash}
+#!/bin/bash
+#SBATCH --job-name=crispr
+#SBATCH --output=/data/home/jianglab/share/bacteria_new_gbank/slurm.out/%x_%A_%a.out
+#SBATCH --error=/data/home/jianglab/share/bacteria_new_gbank/slurm.out/%x_%A_%a.err
+#SBATCH --array=1-20
+#SBATCH --partition=cpu
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=2
+START=$SLURM_ARRAY_TASK_ID
+NUMLINES=5
+STOP=$((SLURM_ARRAY_TASK_ID*NUMLINES))
+START="$(($STOP - $(($NUMLINES - 1))))"
+
+echo "START=$START"
+echo "STOP=$STOP"
+
+for (( N = $START; N <= $STOP; N++ ))
+do
+	sample=AAB-S01R1_115
+	echo $sample
+
+	indir=32_MAGs_drep/dereplicated_genomes/
+	outdir=09_crispr
+
+	singularity exec -B $PWD CrisprCasFinder.simg \
+		perl /usr/local/CRISPRCasFinder/CRISPRCasFinder.pl \
+		-so /usr/local/CRISPRCasFinder/sel392v2.so \
+		-cf /usr/local/CRISPRCasFinder/CasFinder-2.0.3 \
+		-drpt /usr/local/CRISPRCasFinder/supplementary_files/repeatDirection.tsv \
+		-rpts /usr/local/CRISPRCasFinder/supplementary_files/Repeat_List.csv \
+		-cas -def G -rcfowce -gscf -cpuM 2 -out $outdir/${sample} -in $indir/${sample}.fa 
+done
+```
+
+# Genome处理
+
+使用我写的iCRISPR处理所有CCF输出的结果。
+
+arc有一个文件夹：/data/home/jianglab/share/arc_ccfinder
+
+bac有两个文件夹:/data/home/jianglab/share/crisprfinder/ ;/data/home/jianglab/share/last_bac_ccfinder/
+
+pre_CCF.R
+```{r eval=FALSE}
+library(iCRISPR)
+library(pcutils)
+library(dplyr)
+args <- as.numeric(commandArgs(trailingOnly = TRUE))
+all_dirs=read.table("all_dirs")[,1]
+all_dirs=all_dirs[args[1]:args[2]]
+
+all_res=list()
+all_fa_res=list()
+for (i in all_dirs) {
+  dir=i
+  print(dir)
+  #dir_out=paste0("iCRISPR_out/",basename(dir),"_out/")
+  res=multi_pre_CCF_res(input_folder = paste0("output/",dir),output_folder = NULL,threads=1)
+  save(res,file = paste0("rdals/",dir,".rda"))
+  all_res[[i]]=summary_levels(res)
+  all_fa_res[[i]]=get_spacer_fa(res,evidence_level = 4)
+}
+bbb=do.call(rbind,all_res)
+rownames(bbb)=NULL
+save(bbb,file = paste0("rdals/bac_levels_summary_",args[1],".rda"))
+
+bbb=do.call(rbind,all_fa_res)
+rownames(bbb)=NULL
+save(bbb,file =paste0("rdals/bac_level4_spacer_",args[1],".rda"))
+pcutils::write_fasta(bbb,paste0("spacer_fa/bac_level4_spacer_",args[1],".fa"))
+```
+
+所有的genome都处理完了，保存rda文件都在rdals文件夹里。
+
+# Spacer统计
+我们想要找到所有的level4的spacer进一步分析。
+
+先统计一下所有spacer情况:
+
+## arc
+```{r}
+load("1.pre_CCF/1.arc_levels_summary.rda")
+
+plot.evidence_level()
+
+p1=plot(ccc)+labs(title = "Archaea")+mytheme
+p2=plot(ccc,mode = 2)+labs(title = "Archaea")+mytheme
+p1/p2+plot_layout(guides = "collect")
+ggsave("1.pre_CCF/1.arc_levels_summary2.pdf",width = 14,height = 8)
+```
+
+## bac
+```{r eval=FALSE}
+ccc=data.frame()
+for (i in c(list.files("1.pre_CCF/last_rdals2/",full.names = T),
+            list.files("1.pre_CCF/rdals2/",full.names = T))) {
+  print(i)
+  load(i)
+  bbc=dplyr::group_by(bbb,evidence_level,Cas)%>%
+    dplyr::summarise(crispr_num=sum(crispr_num),spacer_num=sum(spacer_num))%>%as.data.frame()
+#  bbc=na.omit(bbc)
+  ccc=rbind(ccc,bbc)
+}
+ccc=dplyr::group_by(ccc,evidence_level,Cas)%>%
+  dplyr::summarise(crispr_num=sum(crispr_num),spacer_num=sum(spacer_num))%>%as.data.frame()
+class(ccc)=c("evidence_level","data.frame")
+save(ccc,file = "1.pre_CCF/1.bac_levels_summary.rda")
+```
+
+```{r}
+p1=plot(ccc,num_size = 2.5)+labs(title = "Bacteria")+mytheme
+p2=plot(ccc,mode = 2,num_size = 2.5)+labs(title = "Bacteria")+mytheme
+
+p1/p2+plot_layout(guides = "collect")
+ggsave("1.pre_CCF/1.bac_levels_summary2.pdf",width = 14,height = 8)
+```
+
+# Spacer序列性质
+用python脚本cal_complexity.py计算各种序列性质比较快。
+
+## arc
+
+```{r}
+if(FALSE){
+  #spcaer太多了，用R比较慢
+  load("1.pre_CCF/arc_level4_spacer.rda")
+  nrow(bbb)
+  arc_level4_spacer_info=summary_seq(bbb[1:100,])
+}
+#用python快很多
+system("python ./cal_complexity.py -h")
+system("python ./cal_complexity.py -f 1.pre_CCF/arc_level4_spacer.fa -o 1.pre_CCF/")
+
+
+readr::read_csv("1.pre_CCF/arc_level4_spacer_complexity.csv")->arc_level4_spacer_info
+filter(arc_level4_spacer_info,A+C+`T`+G==length)->arc_level4_spacer_info
+mutate(arc_level4_spacer_info,GC=(G+C)/length)->arc_level4_spacer_info
+```
+
+长度分布情况
+```{r}
+table(arc_level4_spacer_info$length)%>%which.max()
+
+gghistogram(arc_level4_spacer_info$length,
+            fill = crispr_target_domain["Archaea"],binwidth = 1)+
+  scale_y_continuous(expand = c(0,0),limits = c(0,5e4))+
+  geom_vline(xintercept = 36,linetype=2,col="blue",size=0.6)+
+  annotate("text",x = 42,y=4.7e4,label="36bp",col="blue")+
+  ylab("Archaea spacer count")+xlab("Length")
+
+ggsave("1.pre_CCF/2.arc_spacer_len.pdf",width = 5,height = 3.5)
+```
+
+## bac
+
+细菌的长度分布情况使用shell的sort |uniq -c进行统计，只在R做可视化
+```{r}
+system("scp -P 10022 -r pengchen@10.73.29.10:/data/home/jianglab/share/bac_ccfinder_merge/bac_spacer_length_distribution 1.pre_CCF/")
+
+bac_spacer_length_distribution=read_table("1.pre_CCF/bac_spacer_length_distribution",col_names = c("count","length"))
+
+ggbarplot(bac_spacer_length_distribution,x = "length",y="count")
+
+ggplot(bac_spacer_length_distribution,aes(x = length,y=count))+
+  geom_col(fill=crispr_target_domain["Bacteria"],linewidth=0.5,color="black")+
+  scale_y_continuous(expand = c(0,0),
+                     limits = c(0,1.9e7))+
+  geom_vline(xintercept = 32,linetype=2,col="blue",size=0.6)+
+  annotate("text",x = 38,y=1.8e7,label="32bp",col="blue")+
+  xlim(26,60)+
+  ylab("Bacteria spacer count")+xlab("Length")+mytheme
+
+ggsave("1.pre_CCF/2.bac_spacer_len.pdf",width = 5,height = 3.5)
+```
+
+细菌的spacer大概有25,000,000个，但实际上有大量一模一样的spacer（可能来自同一species的多个genome，虽然并不是所有的spacer history都一样），所以在统计信息或blast时可以先聚类（完全一致的为一类，保留对应关系，方便将聚类spacer拓展到所有的）
+
+```{r}
+
+```
+
+
+# Cas统计
+
+## arc
+
+可以整合所有文件夹里的crispr对象
+```{r}
+#集群上运行
+library(iCRISPR)
+library(pcutils)
+library(dplyr)
+all_dirs=paste0("dir_",1:100)
+
+all_res=list()
+for (i in all_dirs) {
+  dir=i
+  print(dir)
+  load(paste0("rdals/",dir,".rda"))
+  all_res[[i]]=res
+}
+all_arc_crispr=do.call(combine_crispr,all_res)
+save(all_arc_crispr,file = paste0("all_arc_crispr.rda"))
+
+#本地运行
+system("scp -P 10022 -r pengchen@10.73.29.10:/data/home/jianglab/share/arc_ccfinder/all_arc_crispr.rda ./1.pre_CCF/")
+```
+
+
+```{r}
+load("1.pre_CCF/all_arc_crispr.rda")
+cas_type_res=summary_cas_type(all_arc_crispr,each_genome = F)
+
+#所有genome中有crispr的数量：9235/13254
+sapply(all_arc_crispr, \(i)!is.null(i$CRISPR))%>%sum
+#所有genome中有level4的crispr的数量：3140/13254
+sapply(all_arc_crispr, \(i)sum(i$CRISPR$evidence_level==4)>0)%>%sum
+
+#这个TypeU比较特殊，会变成Type
+cas_type_res[which(cas_type_res$type=="Type"),"type"]="TypeU"
+plot.cas_type(cas_type_res)+scale_fill_manual(values = pcutils::get_cols(18))+
+  labs(title = "Archaea Cas type")
+ggsave("1.pre_CCF/3.arc_cas_type.pdf")
+
+my_sunburst(cas_type_res)
+```
+
+## bac
+
+bac太多了，应该不太好直接把所有crispr对象整合，
+```{r}
+
+```
+
+# 代办
+最好统计一下所有genome的基本信息：size, GC含量等，到时候可以和各种crispr相关信息做联合分析
+要么写脚本统计一下，
+要么爬虫获取NCBI信息？因为每个genome首页好像就有这些信息。
+
