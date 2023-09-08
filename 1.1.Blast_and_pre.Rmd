@@ -1663,3 +1663,44 @@ cut -f1,4 arc23_all_info|sort|uniq|cut -f2|sort|uniq -c
 ```
 
 
+## find up and down gene
+```{bash}
+$head 3bac_total_bac_in_gene
+NZ_FLAI01000001.1-CRISPR:1-107524-108392-spacer-2	AAAAGT020000032.1	10859	10890	562	Bacteria	100	63.9	GCA_004157305.2_PDT000315556.2_genomic.fna	>3845 AAAAGT020000032.1 10734 11060 + gene_type=atypical	in_gene
+
+#第一列是spacer id，然后是target sequence id以及start和end，我已经按target sequence id以及start和end sort好了。
+
+$ head info_big_bac_list
+>1 AP008229.1 110 1369 + gene_type=native
+
+#这个文件是所有基因的信息，通过这个就可以判断上下游和是否在基因内
+
+#目标是找到3bac_total_bac_in_gene每个intergenic spacer的上下游
+
+#1.uniq target sequence id以及start和end 三列，因为只要找这部分就行，没必要重复找，后面使用join即可。
+cat 3bac_total_bac_intergenic|cut -f2,3,4|uniq >all_intergenic
+cat all_intergenic|awk -F"\t" '{OFS="\t"; print $1"-"$2"-"$3"\t"$0}' >all_intergenic1
+cat 3bac_total_bac_intergenic|awk -F"\t" '{OFS="\t"; print $2"-"$3"-"$4"\t"$1}' >spacer2target
+
+#2.写了一个脚本find_up_down.py,通过二分法快速找到一个target的位置并确定其上下游
+#但是info_big_bac_list这个文件非常大，49G，pandas无法顺利读取（即便给了200G内存，当然也很慢）
+#所以打算按找sequence的前四个字符拆分成很多小文件，每次只需要读取对应的那个小文件即可
+#拆分文件用split_file.py做，
+
+#3.最后只需要运行
+python find_up_down.py -i all_intergenic1 -o target_up_down
+
+join -a1 spacer2target target_up_down >all_spacer_up_down
+
+#4.手动多线程
+split -l 300000 all_intergenic1 -d -a1 intergenic_
+
+i=$SLURM_ARRAY_TASK_ID
+echo $i
+python find_up_down.py -i intergenic_$i -o target_up_down_$i -l log_$i
+
+#python find_up_down.py -i test3 -o test_out -l log
+
+cat target_up_down_* >target_up_down
+join -a1 spacer2target target_up_down >all_spacer_up_down
+```
