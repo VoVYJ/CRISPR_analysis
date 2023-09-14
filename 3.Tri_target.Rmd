@@ -35,6 +35,8 @@ Install and import all dependent packages, data import:
 ```{r import,echo=TRUE, message=FALSE, warning=FALSE, results="hide"}
 source("./R_config.R")
 output="3.Tri_target/"
+
+arc_net=readRDS("2.Blast_res/1.arc_all_info0905.RDS")
 ```
 
 # source-target
@@ -67,7 +69,6 @@ self_df=tri_target(arc_net)
 
 ### ternary plot
 ```{r}
-
 pdf(file = "3.Tri_target/1.arc_tri_target.pdf",width = 13,height = 8)
 plot.self_df(self_df,mode = 1,filter_spacer = 20)
 plot.self_df(self_df,mode = 2,filter_spacer = 20)
@@ -98,6 +99,9 @@ dev.off()
 genome_c=distinct(arc_net,source_name,source_genome)%>%
   count(source_name,name = "genome_count")
 self_df_and_count=left_join(self_df,genome_c,by=c(Source="source_name"))
+
+filter(self_df_and_count,Level=="Species")%>%arrange(-genome_count)%>%write.csv("3.Tri_target/arc_self_df_and_count.csv",row.names = F)
+
 
 #表格展示self-target最多的一些物种
 filter(self_df_and_count,Level=="Species",Spacer_count>20)%>%arrange(-`T_self_r`)%>%
@@ -156,7 +160,7 @@ sankey_overview(bac_count,file = "3.Tri_target/bac_sankey/bac")
 ```
 
 ```{r}
-bac_self_df=tri_target(bac_arc_net)
+bac_self_df=tri_target(bac_net)
 
 tmp1=tmp2=tmp3=tmp4=list()
 for (i in 1:20) {
@@ -237,6 +241,8 @@ dev.off()
 
 #给self_df加上每个species统计的genome数量
 self_df_and_count=left_join(self_df,genome_c,by=c(Source="source_name"))
+
+filter(self_df_and_count,Level=="Species")%>%arrange(-genome_count)%>%write.csv("3.Tri_target/bac_self_df_and_count.csv",row.names = F)
 
 #表格展示self-target最多的一些物种
 filter(self_df_and_count,Level=="Species",Spacer_count>20)%>%arrange(-`T_self_r`)%>%
