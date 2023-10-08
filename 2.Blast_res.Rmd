@@ -860,7 +860,7 @@ ko_stat=rbind(
   data.frame(KO_id=gene_count$GeneID[16:nrow(gene_count)],p.adjust=0.1)
   )
 spacer_enrich2=KO_fisher(ko_stat,modulelist = GOmodulelist,p.adjust.method = "none")
-plot(spacer_enrich2,padj_threshold = 0.05)
+plot(spacer_enrich2,padj_threshold = 0.05,mode = 2)
 
 ```
 
