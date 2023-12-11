@@ -111,3 +111,12 @@ plot_crispr(genomelist[[1]],contig ="NC_000962.3",cas = F)+xlim_crispr(3119185,3
 summary_SV(align_res$array_align_res)
 ```
 
+
+```{r}
+View(all_arc_crispr[[1]]$CRISPR)
+
+#先找所有level4的array
+
+
+```
+

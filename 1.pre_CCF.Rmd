@@ -39,7 +39,6 @@ output="1.pre_CCF/"
 收集了很多genome，怎么，在哪搜集的？
 
 
-
 # Crisprcasfinder
 
 [CrisprCasFinder](https://crisprcas.i2bc.paris-saclay.fr/CrisprCasFinder/Index)
@@ -125,6 +124,7 @@ pcutils::write_fasta(bbb,paste0("spacer_fa/bac_level4_spacer_",args[1],".fa"))
 
 所有的genome都处理完了，保存rda文件都在rdals文件夹里。
 
+
 # Spacer统计
 我们想要找到所有的level4的spacer进一步分析。
 
@@ -167,6 +167,23 @@ p2=plot(ccc,mode = 2,num_size = 2.5)+labs(title = "Bacteria")+mytheme
 p1/p2+plot_layout(guides = "collect")
 ggsave("1.pre_CCF/1.bac_levels_summary2.pdf",width = 14,height = 8)
 ```
+
+```{r}
+arc_stat=data.frame(
+  genome=names(all_arc_crispr),
+  array_n=sapply(all_arc_crispr, \(x)sum(x$CRISPR$evidence_level==4)),
+  cas_n=sapply(all_arc_crispr, \(x)attributes(x)$basic_info$n_cas)
+)
+
+filter(arc_stat,array_n==0,cas_n>0)%>%nrow()
+#908
+filter(arc_stat,array_n>0,cas_n==0)%>%nrow()
+#876
+
+all_arc_crispr[["GCA_017601185.1_ASM1760118v1_genomic.fna"]]%>%View()
+
+```
+
 
 # Spacer序列性质
 用python脚本cal_complexity.py计算各种序列性质比较快。
@@ -282,6 +299,40 @@ my_sunburst(cas_type_res)
 
 bac太多了，应该不太好直接把所有crispr对象整合，
 ```{r}
+
+```
+
+
+
+# All crispr
+
+## arc
+```{r}
+load("1.pre_CCF/all_arc_crispr.rda")
+
+all_arc_array=lapply(all_arc_crispr,\(i)i$CRISPR)%>%do.call(rbind,.)
+readr::write_delim(all_arc_array,file = "../data/arc23/all_arc_array.tsv",delim = "\t")
+
+```
+
+## bac
+```{r}
+load("1.pre_CCF/all_arc_crispr.rda")
+
+# 集群上运行
+# library(iCRISPR)
+# library(pcutils)
+library(dplyr)
+all_dirs=list.files("rdals",pattern = "dir_*")
+dir.create("rdals/all_array")
+all_res=list()
+for (i in all_dirs) {
+  dir=i
+  print(dir)
+  load(paste0("rdals/",dir))
+  all_arc_array=lapply(res,\(i)i$CRISPR)%>%do.call(rbind,.)
+  readr::write_delim(all_arc_array,file = paste0("rdals/all_array/",dir,".tsv"),delim = "\t")
+}
 
 ```
 
