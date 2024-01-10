@@ -62,7 +62,6 @@ arc_net=mutate(arc_net,target_which=ifelse(target_kingdom=="Viruses","Viruses",i
 arc_genome_lev=group_by(arc_net,source_genome)%>%summarise(spacer_n=n(),self_genome=sum(self_genome_target),other_genome=sum(!self_genome_target))
 arc_genome_lev=mutate(arc_genome_lev,self_genome_ratio=self_genome/spacer_n)
 
-
 ```
 
 

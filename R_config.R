@@ -1,4 +1,4 @@
-devtools::load_all("~/Documents/R/iCRISPR/")
+devtools::load_all("~/Documents/R/CRISPR/iCRISPR/")
 devtools::load_all("~/Documents/R/pcutils/")
 
 Packages <- c("dplyr", "reshape2","ggsci","ggpubr","RColorBrewer","cowplot","patchwork","readr","tibble","vegan","ggrepel")
