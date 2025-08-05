@@ -146,19 +146,22 @@ dev.off()
 ## bac
 
 ```{bash}
-scp -P 10022 pengchen@10.73.29.10:~/work/crispr/pc/pc/bac_net_19.RDS ~/Documents/R/CRISPR_analysis/analysis/2.Blast_res/
+scp -P 45777 pengchen@10.73.29.10:/share/home/jianglab/shared/ouxinyi2liuzhen/bacteria24/bac23_split/pc/bac_net_19.RDS ~/Documents/R/CRISPR_analysis/analysis/2.Blast_res/
 ```
 
 桑基图展示source-target情况：
 ```{r}
+load("2.Blast_res/2.bac_pd_count.RDS")
 bac_target_tax=readRDS("2.Blast_res/target_tax.RDS")
 bac_target_tax=distinct_all(bac_target_tax[,-1])
 bac_source_tax=readRDS("2.Blast_res/source_tax.RDS")
 bac_source_tax=distinct_all(bac_source_tax[,-1])
 
-bac_count$target_Species=bac_count$target_name
-bac_count=left_join(bac_count,distinct_all(bac_source_tax),by=c("source_name"="source_Species"),suffix = c("", ".y"))
-bac_count$source_Species=bac_count$source_name
+if(!"target_Kingdom"%in%colnames(bac_count))bac_count=left_join(bac_count,bac_target_tax,
+                                                                by=c("target_name"="target_Species"),suffix = c("", ".y"),keep=T)
+if(!"source_Kingdom"%in%colnames(bac_count))bac_count=left_join(bac_count,bac_source_tax,
+                                                                by=c("source_name"="source_Species"),suffix = c("", ".y"),keep=T)
+
 
 dir.create("3.Tri_target/bac_sankey/")
 #指定two_level时展示指定level,topN1指定各个bar的元素
@@ -166,13 +169,13 @@ sankey_overview(bac_count,two_level = c("Phylum","Kingdom"),topN1 = c(5,3))
 
 #直接导出各个level的结果
 sankey_overview(bac_count,file = "3.Tri_target/bac_sankey/bac")
-
 ```
 
 ```{r}
-bac_self_df=tri_target(bac_net)
-
-tmp1=tmp2=tmp3=tmp4=list()
+#集群 /share/home/jianglab/shared/ouxinyi2liuzhen/bacteria24/bac23_split/
+library(dplyr)
+library(iCRISPR)
+tmp1=tmp4=list()
 for (i in 1:19) {
   cat("read file:",i,"\n")
   tmp_bac_net=readRDS(file = paste0("bac_net_",i,".RDS"))
@@ -192,10 +195,12 @@ bac_genome_c=distinct(all_tmp4,source_name,source_genome)%>%
 saveRDS(all_tmp1,file = "1.bac_self_df1.RDS")
 saveRDS(bac_genome_c,file = "1.bac_genome_c.RDS")
 
-"scp -P 10022 -r pengchen@10.73.29.10:~/work/crispr/pc/1.bac_self_df1.RDS ~/Documents/R/CRISPR_analysis/analysis/3.Tri_target/"
-"scp -P 10022 -r pengchen@10.73.29.10:~/work/crispr/pc/1.bac_genome_c.RDS ~/Documents/R/CRISPR_analysis/analysis/3.Tri_target/"
+"scp -P 45777 -r pengchen@10.73.29.10:/share/home/jianglab/shared/ouxinyi2liuzhen/bacteria24/bac23_split/1.bac_self_df1.RDS ~/Documents/R/CRISPR_analysis/analysis/3.Tri_target/"
+"scp -P 45777 -r pengchen@10.73.29.10:/share/home/jianglab/shared/ouxinyi2liuzhen/bacteria24/bac23_split/1.bac_genome_c.RDS ~/Documents/R/CRISPR_analysis/analysis/3.Tri_target/"
 
+```
 
+```{r}
 library(dplyr)
 library(iCRISPR)
 tmp2=tmp3=list()
@@ -213,9 +218,10 @@ all_tmp3=do.call(iCRISPR::combine,tmp3)
 saveRDS(all_tmp2,file = "1.bac_self_df2.RDS")
 saveRDS(all_tmp3,file = "1.bac_self_df3.RDS")
 
-"scp -P 10022 -r pengchen@10.73.29.10:~/work/crispr/pc/1.bac_self_df2.RDS ~/Documents/R/CRISPR_analysis/analysis/3.Tri_target/"
-"scp -P 10022 -r pengchen@10.73.29.10:~/work/crispr/pc/1.bac_self_df3.RDS ~/Documents/R/CRISPR_analysis/analysis/3.Tri_target/"
+"scp -P 45777 -r pengchen@10.73.29.10:/share/home/jianglab/shared/ouxinyi2liuzhen/bacteria24/bac23_split/1.bac_self_df2.RDS ~/Documents/R/CRISPR_analysis/analysis/3.Tri_target/"
+"scp -P 45777 -r pengchen@10.73.29.10:/share/home/jianglab/shared/ouxinyi2liuzhen/bacteria24/bac23_split/1.bac_self_df3.RDS ~/Documents/R/CRISPR_analysis/analysis/3.Tri_target/"
 ```
+
 
 ### network
 
@@ -229,11 +235,14 @@ plot.self_df(self_df,mode = 2,filter_spacer = 20)
 #dev.off()
 
 #真正的genome-genome self-target
-self_df2=readRDS("3.Tri_target/1.bac_self_df2.RDS")
-plot.self_df(self_df2,filter_spacer = 20)
-
-self_df3=readRDS("3.Tri_target/1.bac_self_df3.RDS")
-plot.self_df(self_df3,filter_spacer = 20)
+if(file.exists("3.Tri_target/1.bac_self_df2.RDS")){
+  self_df2=readRDS("3.Tri_target/1.bac_self_df2.RDS")
+  plot.self_df(self_df2,filter_spacer = 20)
+}
+if(file.exists("3.Tri_target/1.bac_self_df3.RDS")){
+  self_df3=readRDS("3.Tri_target/1.bac_self_df3.RDS")
+  plot.self_df(self_df3,filter_spacer = 20)
+}
 
 dev.off()
 
@@ -243,12 +252,13 @@ genome_c=readRDS("3.Tri_target/1.bac_genome_c.RDS")
 genome_c%>%arrange(-genome_count)%>%head(10)%>%pull(source_name)->top10
 
 
-pdf("3.Tri_target/1.bac_top10genome_tri_target.pdf")
-for (i in top10) {
-  filter(self_df2,source_name==i)%>%plot.self_df->tmpp
-  print(tmpp+labs(title = i))
-}
-dev.off()
+# pdf("3.Tri_target/1.bac_top10genome_tri_target.pdf")
+# for (i in top10) {
+#   filter(self_df2,source_name==i)%>%plot.self_df->tmpp
+#   print(tmpp+labs(title = i))
+# }
+# dev.off()
+
 
 #给self_df加上每个species统计的genome数量
 self_df_and_count=left_join(self_df,genome_c,by=c(Source="source_name"))
@@ -262,6 +272,7 @@ filter(self_df_and_count,Level=="Species",Spacer_count>20)%>%arrange(-`T_self_r`
 bac_self_top$T_self_r=paste0(bac_self_top$T_self_r*100,"%")
 colnames(bac_self_top)[7]="T_self_ratio"
 sanxian(bac_self_top,fig=T,rows=NULL)
+
 
 #绘制self-target最多的一些物种内的genome情况
 pdf("3.Tri_target/1.bac_top10_self_genome_tri_target.pdf")

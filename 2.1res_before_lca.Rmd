@@ -230,7 +230,6 @@ tmp=cbind(gls,strsplit2((gls[,2,drop=T]),split = "/"))
 all_genomelist=data.frame(p=tmp$p,dir=tmp$V2,genome=tmp$V3)
 save(all_genomelist,file = "all_genomelist.rda")
 
-
 library(readr)
 library(dplyr)
 search_genome=read_delim("/share/home/jianglab/shared/ouxinyi2liuzhen/bacteria23/genome_stat/Corynebacterium_diphtheriae_source_genome_stat")
